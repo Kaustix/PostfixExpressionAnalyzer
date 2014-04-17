@@ -1,22 +1,78 @@
 (define stackList '())
+(define isIf '())
 (define temp 0)
 
 (define (main)
   (display "UofL>")
   
+  
   (define inputString(read-keyboard-as-string)) ; get the input string
-  (define inputList(str-split a #\space)) ; convert the input string to a list
+  (define inputList(str-split inputString #\space)) ; convert the input string to a lis
+  
+  (display inputString)
   
   (interpret inputList) ; interpret the input list
-
-  (main) ; recursivly call main
-)
-
-(define (interpret arg)
-  (if (
   
+  (main) ; call main to start UofL parsing
+   
 )
 
+(define (interpret argList)
+  (define setArgList argList)
+  (if (pair? argList)
+      (begin
+        (if (number? (string->number (car argList))) (push (string->number(car argList)))) ;push int op
+  
+        (if (string=? "+" (car argList)) (add)) ;arithmetic ops
+        (if (string=? "-" (car argList)) (sub))
+        (if (string=? "*" (car argList)) (mult))
+        (if (string=? "/" (car argList)) (div))
+  
+        (if (string=? "DROP" (car argList)) (drop)) ;stack ops
+        (if (string=? "POP" (car argList))  (pop))
+        (if (string=? "SAVE" (car argList)) (save))
+        (if (string=? "DUP" (car argList))  (dup))
+        (if (string=? "SWAP" (car argList)) (swap))
+        (if (string=? "STACK" (car argList))(stack))
+        (if (string=? "CLEAR" (car argList))(clear))
+        
+        (if (string=? ">" (car argList)) (->))  ;conditional ops
+        (if (string=? "<" (car argList)) (-<))
+        (if (string=? ">=" (car argList)) (->=))
+        (if (string=? "<=" (car argList)) (-<=))
+        
+        (if (string=? "IF" (car argList))
+            (if (pair? stackList)
+                (if (equal? 1 (car stackList))
+                    (begin
+                      (drop)
+                      (let ((start (+ 2 (list-index argList "IF"))) (end (+ 1 (list-index argList "ELSE"))))
+                        (interpret (slice argList start (- end start))))  ; recursively call the IF statemnt
+                      
+                      (let ((start (+ 2 (list-index argList "THEN"))) (end (list-count argList)))
+                        (set! setArgList (slice argList start (- end start))))))   ; cut out entire if/else/then statement
+                      
+                (if (equal? 0 (car stackList))
+                    (begin
+                      (drop)
+                      (let ((start (+ 2 (list-index argList "ELSE"))) (end (list-count argList)))
+                        (set! setArgList (slice(argList start (- end start))))))))) ; cut out entire if statement continue on with else
+         
+  
+        (if (string=? "." (car argList))  ;display ops
+            (if (pair? (cdr argList))
+                (begin (display (cadr argList)) (newline))
+                (if (pair? stackList)
+                    (begin (display (car stackList)) (newline))
+                    (begin (display "") (newline)) )))
+        
+        (if (pair? setArgList)
+            (interpret (cdr setArgList))) ;recursively call interpret until empty list
+
+)))
+
+
+; ========== READ-LINE/INPUT OPERTAIONS ==========
 (define (read-keyboard-as-string) ; this function returns keyboard input as a string
   (let ((char (read-char)))
     (if (char=? char #\newline)
@@ -34,6 +90,7 @@
 )
 
 (define (str-split str ch) ; this function splits a string by a character and returns a list
+  (if (string? str)
   (let ((len (string-length str)))
     (letrec
       ((split
@@ -44,37 +101,119 @@
                                               (split (+ 1 a) (+ 1 b))
                                               (cons (substring str a b) (split b b))))
             (else (split a (+ 1 b)))))))
-      (split 0 0))))
+      (split 0 0)))))
 
+
+(define (list-index l el)
+    (if (null? l)
+        -1
+        (if (string=? (car l) el)
+            0
+            (let ((result (list-index (cdr l) el)))
+                (if (= result -1)
+                    -1
+                    (+ result 1))))))
+
+(define (list-count lst)
+  (if (null? lst)
+      0
+      (+ 1 (list-count (cdr lst)))))
+
+(define get-n-items
+    (lambda (lst num)
+        (if (> num 0)
+            (cons (car lst) (get-n-items (cdr lst) (- num 1)))
+            '()))) ;'
+
+(define slice
+    (lambda (lst start count)
+        (if (> start 1)
+            (slice (cdr lst) (- start 1) count)
+            (get-n-items lst count))))
+  
+
+; ========== ARITHMETIC OPERATIONS ==========
+(define (add) (begin (pop) (let ((x temp)) (pop) (push (+ temp x)))))  ; + - * / the top top two elemenets fo the stack
+(define (sub) (begin (pop) (let ((x temp)) (pop) (push (- temp x)))))  ; and pushes the awnser back onto the stack
+(define (mult)(begin (pop) (let ((x temp)) (pop) (push (* temp x))))) 
+(define (div) (begin (pop) (let ((x temp)) (pop) (push (round(/ temp x)))))) ;
+
+
+; ========== CONDITIONAL OPERATION ==========
+(define (->) 
+  (pop) 
+  (let ((x temp)) 
+    (pop) (save)
+    (if (> temp x) (push 1) (push 0))))
+
+(define (-<) 
+  (pop) 
+  (let ((x temp)) 
+    (pop) (save)
+    (if (< temp x) (push 1) (push 0))))
+
+(define (->=) 
+  (pop) 
+  (let ((x temp)) 
+    (pop) (save)
+    (if (>= temp x) (push 1) (push 0))))
+
+(define (-<=) 
+  (pop) 
+  (let ((x temp)) 
+    (pop) (save)
+    (if (<= temp x) (push 1) (push 0))))
+
+  
+; ========== STACK OPERATIONS ==========
 (define (push arg) (set! stackList (cons arg stackList))) ; pushes item onto a global stack list
 
 (define (pop) ; sets the temp variable to top item on the stack
-  (set! temp (car stackList))
-  (set! stackList (cdr stackList))
+  (if (pair? stackList)
+      (begin
+        (set! temp (car stackList))
+        (set! stackList (cdr stackList))))
 )
 
-(define (stack) (display-list stackList)) ; displays the stack list as seperate string values
-(define (display-list list) 
-  (if (not(null? list)) 
-      (begin (display (car list)) (display #\space) (display-list (cdr list)))
-  )
+(define (stack)  ; calls display list and displays a new line
+  (display-list stackList)
+  (newline)
+) 
+(define (display-list list) ; displays a list as a string of values
+  (if (pair? list) 
+      (begin 
+        (display (car list)) 
+        (display #\space) 
+        (display-list (cdr list))))
 )
 
-(define (drop) (set! stackList (cdr stackList))) ; removes the top item of the stack
+(define (drop)    ; removes the top item of the stack
+  (if (pair? stackList)
+      (set! stackList (cdr stackList)))
+)
 
-(define (save) (push temp)) ; pushes the current item in temp to the top of the stack
+(define (save) ; pushes the current item in temp to the top of the stack
+  (if (not (equal? 0 temp))
+      (push temp))
+) 
 
-(define (dup) (push (car stackList))) ; duplicates the first item on the stack
+(define (dup) ; duplicates the first item on the stack
+   (if (pair? stackList)
+       (push (car stackList)))
+)
 
 (define (swap) ; swaps the first and second item on the stack
-  (pop)
-  (let ((first-element temp))
-    (pop)
-    (let ((second-element temp))
-      (push first-element)
-      (push second-element)
-    )
-  )
-)
+  (if (pair? stackList)
+      (begin
+        (pop)
+        (if (pair? stackList)
+            (begin
+              (let ((first-element temp))
+                (pop)
+                (let ((second-element temp))
+                  (push first-element)
+                  (push second-element)))))
+      ))
+ )
 
 (define (clear) (set! stackList '())) ; resets the stack to an empty list
