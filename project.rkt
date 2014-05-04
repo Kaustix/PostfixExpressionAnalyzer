@@ -1,74 +1,99 @@
 (define stackList '())
 (define temp '())
+(define func '())
+(define condition '())
+(define input-string '())
 
 (define (main)
   (display "UofL>")
   
-  
   (define inputString(read-keyboard-as-string)) ; get the input string
   (define inputList(str-split inputString #\space)) ; convert the input string to a lis
-  
+
   (if (pair? inputList)
       (if (not (string=? "QUIT" (car inputList)))
           (begin
+            (set! input-string inputList)
             (interpret inputList) ; interpret the input list
             (main)))) ; recursievly call main to get input
 )
-  
+
 (define (interpret argList)
   (define setArgList argList)
   (if (pair? setArgList)
       (begin
         
-        (if (number? (string->number (car setArgList))) (push (string->number(car setArgList)))) ;push int op
-  
-        (if (string=? "+" (car setArgList)) (add)) ;arithmetic ops
-        (if (string=? "-" (car setArgList)) (sub))
-        (if (string=? "*" (car setArgList)) (mult))
-        (if (string=? "/" (car setArgList)) (div))
-  
-        (if (string=? "DROP" (car setArgList)) (drop)) ;stack ops
-        (if (string=? "POP" (car setArgList))  (pop))
-        (if (string=? "SAVE" (car setArgList)) (save))
-        (if (string=? "DUP" (car setArgList))  (dup))
-        (if (string=? "SWAP" (car setArgList)) (swap))
-        (if (string=? "STACK" (car setArgList))(stack))
-        (if (string=? "CLEAR" (car setArgList))(clear))
-       
+        ; -------- Number Operations  ----------------
+        (if (pair? setArgList)
+            (if (number? (string->number (car setArgList))) (push (string->number(car setArgList)))))
         
-        (if (string=? ">" (car setArgList))  ;conditional + loop ops
-            (begin 
-              (if (string=? "LOOP" (cadr setArgList))
-                  (begin 
-                    (loop setArgList)
-                    (set! setArgList (cut-all setArgList "POOL")))
-                  (->)))) 
-              
-        (if (string=? "<" (car setArgList)) (-<))
-        (if (string=? ">=" (car setArgList)) (->=))
-        
-        (if (string=? "<=" (car setArgList)) 
+        ; ----------- Artithmetic Operations ---------------
+        (if (pair? setArgList)
             (begin
-              (if (string=? "LOOP" (cadr setArgList))
-                  (begin
-                    (loop setArgList)
-                    (set! setArgList (cut-all setArgList "POOL")))
-                  (-<=))))
+              (if (string=? "+" (car setArgList)) (add)) 
+              (if (string=? "-" (car setArgList)) (sub))
+              (if (string=? "*" (car setArgList)) (mult))
+              (if (string=? "/" (car setArgList)) (div))))
         
-        (if (string=? "IF" (car setArgList))    ; if/else ops
-            (if (pair? stackList)
-                (begin
-                  (if (equal? 1 (car stackList))
-                      (begin (drop) (interpret (cut setArgList "IF" "ELSE"))))  ; recursively call the if statemnt
+        ; ----------- Stack Operations ----------------
+        (if (pair? setArgList)
+            (begin
+              (if (string=? "DROP" (car setArgList)) (drop)) 
+              (if (string=? "POP" (car setArgList))  (pop))
+              (if (string=? "SAVE" (car setArgList)) (save))
+              (if (string=? "DUP" (car setArgList))  (dup))
+              (if (string=? "SWAP" (car setArgList)) (swap))
+              (if (string=? "STACK" (car setArgList))(stack))
+              (if (string=? "CLEAR" (car setArgList))(clear))))
+       
+        ; ---------- Loop Operations ---------------
+        (if (pair? setArgList)
+            (if (string=? "LOOP" (car setArgList)) 
+                (begin 
+                  (set! condition (list (car input-string) (cadr input-string)))
+                  (loop-op (cut setArgList "LOOP" "POOL"))
+                  (set! setArgList (cut-all setArgList "POOL")))))
+        
+        ; ---------- Condition Opertaion ------------
+        (if (pair? setArgList)
+            (begin
+             (if (string=? ">"  (car setArgList)) (->))
+             (if (string=? "<"  (car setArgList)) (-<))
+             (if (string=? ">=" (car setArgList)) (->=))
+             (if (string=? "<=" (car setArgList)) (-<=))
+             (if (string=? "="  (car setArgList)) (-=))))
+        
+        
+        ; ----------- if / else Operations ---------
+        (if (pair? setArgList)
+            (if (string=? "IF" (car setArgList))   
+                (if (pair? stackList)
+                    (begin
+                      (if (equal? 1 (car stackList))
+                          (begin (drop) (interpret (cut setArgList "IF" "ELSE"))))  ; recursively call the if statemnt
                       
-                  (if (equal? 0 (car stackList))
-                      (begin (drop) (interpret (cut setArgList "ELSE" "THEN"))))  ; recursively call the else statemnt
+                      (if (equal? 0 (car stackList))
+                          (begin (drop) (interpret (cut setArgList "ELSE" "THEN"))))  ; recursively call the else statemnt
                   
-                  (set! setArgList (cut-all setArgList "THEN")))))             ; cut out entire if/else/then statement
+                      (set! setArgList (cut-all setArgList "THEN"))))))            ; cut out entire if/else/then statement
 
         
+        ; ------  Function Operations -----------
+        (if (pair? setArgList)
+            (begin 
+              (if (string=? "FUNC" (car setArgList))
+                  (begin
+                    (set! func (cut setArgList "FUNC" "CNUF"))
+                    (display "(") (display (car func)) (display ")") (newline)
+                    (set! setArgList (cut-all setArgList "CNUF"))))
+              
+              (if (pair? func)
+                  (if (pair? setArgList)
+                      (if (string=? (car func) (car setArgList))
+                          (interpret (cdr func)))))))
         
-        (if (pair? setArgList)  ;display ops
+        ; -------- Display Operations -------------
+        (if (pair? setArgList) 
             (begin
               (if (string=? "." (car setArgList))  
                   (if (pair? (cdr setArgList))
@@ -81,16 +106,9 @@
                           (begin (display "") (newline)) )))
         
               (interpret (cdr setArgList)))) ;recursively call interpret until empty list
-
+        
 )))
         
-(define (cut argList startWord endWord)
-  (let ((start (+ 2 (list-index argList startWord))) (end (+ 1 (list-index argList endWord))))
-    (slice argList start (- end start))))
-
-(define (cut-all argList startWord)
-  (let ((start (+ 2 (list-index argList startWord))) (end (+ 1 (list-count argList))))
-    (slice argList start (- end start))))
 
 ; ========== READ-LINE/INPUT OPERTAIONS ==========
 (define (read-keyboard-as-string) ; this function returns keyboard input as a string
@@ -101,13 +119,7 @@
          (let loop ((char char))
            (if (char=? char #\newline)
                '()
-               (cons char (loop (read-char)))
-               )
-           )
-         )
-        )
-    )
-)
+               (cons char (loop (read-char)))))))))
 
 
 ; ========== CUSTOM STRING / LIST OPERATIONS ==========
@@ -163,15 +175,35 @@
             (slice (cdr lst) (- start 1) count)
             (get-n-items lst count))))
 
-; ========== LOOP OPERATIONS ==========
-(define (loop argList)
-  (define x 10))
+(define (cut argList startWord endWord)
+  (let ((start (+ 2 (list-index argList startWord))) (end (+ 1 (list-index argList endWord))))
+    (slice argList start (- end start))))
+
+(define (cut-all argList startWord)
+  (let ((start (+ 2 (list-index argList startWord))) (end (+ 1 (list-count argList))))
+    (slice argList start (- end start))))
+
 
 ; ========== ARITHMETIC OPERATIONS ==========
-(define (add) (begin (pop) (let ((x temp)) (pop) (push (+ temp x)))))  ; + - * / the top top two elemenets fo the stack
-(define (sub) (begin (pop) (let ((x temp)) (pop) (push (- temp x)))))  ; and pushes the awnser back onto the stack
-(define (mult)(begin (pop) (let ((x temp)) (pop) (push (* temp x))))) 
-(define (div) (begin (pop) (let ((x temp)) (pop) (push (round(/ temp x)))))) ;
+(define (add)
+  (let ((x (car stackList)) (y (cadr stackList)))
+    (drop) (drop)
+    (push (+ y x))))
+
+(define (sub) 
+  (let ((x (car stackList)) (y (cadr stackList)))
+    (drop) (drop)
+    (push (- y x))))
+
+(define (mult)
+  (let ((x (car stackList)) (y (cadr stackList)))
+    (drop) (drop)
+    (push (* y x))))
+
+(define (div) 
+  (let ((x (car stackList)) (y (cadr stackList)))
+    (drop) (drop)
+    (push (round (/ y x)))))
 
 
 ; ========== CONDITIONAL OPERATION ==========
@@ -199,6 +231,25 @@
     (pop) (save)
     (if (<= temp x) (push 1) (push 0))))
 
+(define (-=) 
+  (pop)
+  (let ((x temp)) 
+    (pop) (save)
+    (if (= temp x) (push 1) (push 0))))
+
+; ========== LOOP OPERATIONS ==========
+(define (loop-op arg)
+  (if (equal? (car stackList) 1)
+      (begin
+        (interpret arg)
+        (loop-op2 arg))))
+
+(define (loop-op2 arg)
+  (interpret condition)
+  (if (equal? (car stackList) 1)
+      (begin
+        (interpret arg)
+        (loop-op2 arg))))
   
 ; ========== STACK OPERATIONS ==========
 (define (push arg) (set! stackList (cons arg stackList))) ; pushes item onto a global stack list
